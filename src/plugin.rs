@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use solana_program::pubkey::Pubkey;
+use solana_sdk::account::Account;
+
 use {
     crate::*,
-    log::info,
-    rdkafka::util::get_rdkafka_version,
-    simple_error::simple_error,
     solana_geyser_plugin_interface::geyser_plugin_interface::{
         GeyserPlugin, GeyserPluginError as PluginError, ReplicaAccountInfo,
         ReplicaAccountInfoVersions, ReplicaTransactionInfoVersions, Result as PluginResult,
@@ -38,50 +38,14 @@ impl Debug for KafkaPlugin {
     }
 }
 
-impl GeyserPlugin for KafkaPlugin {
-    fn name(&self) -> &'static str {
-        "KafkaPlugin"
+impl KafkaPlugin {
+    pub fn new() -> Self {
+        Default::default()
     }
 
-    fn on_load(&mut self, config_file: &str) -> PluginResult<()> {
-        if self.publisher.is_some() {
-            let err = simple_error!("plugin already loaded");
-            return Err(PluginError::Custom(Box::new(err)));
-        }
-
-        solana_logger::setup_with_default("info");
-        info!(
-            "Loading plugin {:?} from config_file {:?}",
-            self.name(),
-            config_file
-        );
-        let config = Config::read_from(config_file)?;
-        self.publish_all_accounts = config.publish_all_accounts;
-
-        let (version_n, version_s) = get_rdkafka_version();
-        info!("rd_kafka_version: {:#08x}, {}", version_n, version_s);
-
-        let producer = config
-            .producer()
-            .map_err(|e| PluginError::Custom(Box::new(e)))?;
-        info!("Created rdkafka::FutureProducer");
-
-        let publisher = Publisher::new(producer, &config);
-        self.publisher = Some(publisher);
-        self.filter = Some(Filter::new(&config));
-        info!("Spawned producer");
-
-        Ok(())
-    }
-
-    fn on_unload(&mut self) {
-        self.publisher = None;
-        self.filter = None;
-    }
-
-    fn update_account(
-        &mut self,
-        account: ReplicaAccountInfoVersions,
+    pub fn update_account(
+        &self,
+        (pubkey, account): &(Pubkey, Account),
         slot: u64,
         is_startup: bool,
     ) -> PluginResult<()> {
@@ -89,20 +53,20 @@ impl GeyserPlugin for KafkaPlugin {
             return Ok(());
         }
 
-        let info = Self::unwrap_update_account(account);
-        if !self.unwrap_filter().wants_program(info.owner) {
-            return Ok(());
-        }
+        let info = account;
+        // if !self.unwrap_filter().wants_program(info.owner) {
+        //     return Ok(());
+        // }
 
         let event = UpdateAccountEvent {
             slot,
-            pubkey: info.pubkey.to_vec(),
+            pubkey: pubkey.to_bytes().to_vec(),
             lamports: info.lamports,
-            owner: info.owner.to_vec(),
+            owner: info.owner.to_bytes().to_vec(),
             executable: info.executable,
             rent_epoch: info.rent_epoch,
             data: info.data.to_vec(),
-            write_version: info.write_version,
+            write_version: 0,
         };
 
         let publisher = self.unwrap_publisher();
@@ -111,8 +75,8 @@ impl GeyserPlugin for KafkaPlugin {
             .map_err(|e| PluginError::AccountsUpdateError { msg: e.to_string() })
     }
 
-    fn update_slot_status(
-        &mut self,
+    pub fn update_slot_status(
+        &self,
         slot: u64,
         parent: Option<u64>,
         status: PluginSlotStatus,
@@ -133,8 +97,8 @@ impl GeyserPlugin for KafkaPlugin {
             .map_err(|e| PluginError::AccountsUpdateError { msg: e.to_string() })
     }
 
-    fn notify_transaction(
-        &mut self,
+    pub fn notify_transaction(
+        &self,
         transaction: ReplicaTransactionInfoVersions,
         slot: u64,
     ) -> PluginResult<()> {
@@ -148,20 +112,6 @@ impl GeyserPlugin for KafkaPlugin {
         publisher
             .update_transaction(event)
             .map_err(|e| PluginError::TransactionUpdateError { msg: e.to_string() })
-    }
-
-    fn account_data_notifications_enabled(&self) -> bool {
-        self.unwrap_publisher().wants_update_account()
-    }
-
-    fn transaction_notifications_enabled(&self) -> bool {
-        self.unwrap_publisher().wants_transaction()
-    }
-}
-
-impl KafkaPlugin {
-    pub fn new() -> Self {
-        Default::default()
     }
 
     fn unwrap_publisher(&self) -> &Publisher {
