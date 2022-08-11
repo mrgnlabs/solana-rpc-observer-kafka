@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::sync::{Arc, RwLock};
+use std::{
+    env,
+    sync::{Arc, RwLock},
+};
 
 mod config;
 mod event;
@@ -29,10 +32,15 @@ pub use {
     publisher::Publisher,
 };
 
-pub fn main() {
-    let kp = KafkaPlugin::new();
+fn main() {
+    let mut kp = KafkaPlugin::new();
+
+    let args: Vec<String> = env::args().collect();
+    let file_path = &args[1];
+    kp.init(&file_path);
+
     let mut rpc = rpc::RpcObserver::new(
-        solana_client::rpc_client::RpcClient::new("http://localhost:8899"),
+        solana_client::rpc_client::RpcClient::new("https://marginfi.genesysgo.net"),
         Arc::new(RwLock::new(kp)),
     );
 

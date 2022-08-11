@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use log::info;
+use rdkafka::util::get_rdkafka_version;
+use simple_error::simple_error;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::account::Account;
 
@@ -41,6 +44,28 @@ impl Debug for KafkaPlugin {
 impl KafkaPlugin {
     pub fn new() -> Self {
         Default::default()
+    }
+
+    pub fn init(&mut self, config_file: &str) {
+        if self.publisher.is_some() {
+            panic!("plugin already loaded");
+        }
+
+        solana_logger::setup_with_default("info");
+        info!("Loading Kafka plugin from config_file {:?}", config_file);
+        let config = Config::read_from(config_file).unwrap();
+        self.publish_all_accounts = config.publish_all_accounts;
+
+        let (version_n, version_s) = get_rdkafka_version();
+        info!("rd_kafka_version: {:#08x}, {}", version_n, version_s);
+
+        let producer = config.producer().unwrap();
+        info!("Created rdkafka::FutureProducer");
+
+        let publisher = Publisher::new(producer, &config);
+        self.publisher = Some(publisher);
+        self.filter = Some(Filter::new(&config));
+        info!("Spawned producer");
     }
 
     pub fn update_account(

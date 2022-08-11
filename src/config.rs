@@ -73,7 +73,7 @@ impl Config {
             .map_err(|e| GeyserPluginError::ConfigFileReadError { msg: e.to_string() })?;
         this.fill_defaults();
         Ok(this)
-    }
+    } 
 
     /// Create rdkafka::FutureProducer from config.
     pub fn producer(&self) -> KafkaResult<Producer> {

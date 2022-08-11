@@ -7,10 +7,11 @@ edition = "2021"
 repository = "https://github.com/Blockdaemon/solana-accountsdb-plugin-kafka"
 license = "Apache-2.0"
 
-[lib]
-crate-type = ["cdylib", "rlib"]
+# [lib]
+# crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+envy = "0.4.2"
 prost = "0.10"
 rdkafka = { version = "0.28", features = ["ssl-vendored", "sasl", "cmake-build"] }
 solana-geyser-plugin-interface = { version = "=1.10.32" }
