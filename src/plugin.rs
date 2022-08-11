@@ -46,14 +46,12 @@ impl KafkaPlugin {
         Default::default()
     }
 
-    pub fn init(&mut self, config_file: &str) {
+    pub fn init(&mut self, config: &Config) {
         if self.publisher.is_some() {
             panic!("plugin already loaded");
         }
 
         solana_logger::setup_with_default("info");
-        info!("Loading Kafka plugin from config_file {:?}", config_file);
-        let config = Config::read_from(config_file).unwrap();
         self.publish_all_accounts = config.publish_all_accounts;
 
         let (version_n, version_s) = get_rdkafka_version();

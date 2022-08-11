@@ -46,6 +46,9 @@ pub struct Config {
     /// List of programs to ignore.
     #[serde(default)]
     pub program_ignores: Vec<String>,
+    
+    #[serde(default)]
+    pub programs: Vec<String>,
     /// Publish all accounts on startup.
     #[serde(default)]
     pub publish_all_accounts: bool,
@@ -60,6 +63,7 @@ impl Default for Config {
             slot_status_topic: "".to_owned(),
             transaction_topic: "".to_owned(),
             program_ignores: Vec::new(),
+            programs: Vec::new(),
             publish_all_accounts: false,
         }
     }

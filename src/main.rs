@@ -17,6 +17,8 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+use log::info;
+
 mod config;
 mod event;
 mod filter;
@@ -36,12 +38,15 @@ fn main() {
     let mut kp = KafkaPlugin::new();
 
     let args: Vec<String> = env::args().collect();
-    let file_path = &args[1];
-    kp.init(&file_path);
+    let file_path = &args.get(1).expect("<config path> must be set");
+    info!("Loading Kafka plugin from config_file {:?}", file_path);
+    let config = Config::read_from(file_path).unwrap();
+    kp.init(&config);
 
     let mut rpc = rpc::RpcObserver::new(
-        solana_client::rpc_client::RpcClient::new("https://marginfi.genesysgo.net"),
+        solana_client::rpc_client::RpcClient::new("https://devnet.genesysgo.net"),
         Arc::new(RwLock::new(kp)),
+        &config,
     );
 
     rpc.run();
